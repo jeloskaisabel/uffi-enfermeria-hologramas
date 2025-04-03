@@ -95,6 +95,6 @@ export default {
 <style scoped>
 nav {
   position: relative;
-  z-index: 10; /* Ensure nav is above other content */
+  z-index: 10;
 }
 </style>
