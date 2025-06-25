@@ -17,12 +17,6 @@
             <li>
               <router-link to="/" class="block py-2 px-3 text-blue-800 hover:text-orange-500 md:p-0">Inicio</router-link>
             </li>
-            <li>
-              <router-link to="/about" class="block py-2 px-3 text-blue-800 hover:text-orange-500 md:p-0">Acerca de</router-link>
-            </li>
-            <li>
-              <router-link to="/resources" class="block py-2 px-3 text-blue-800 hover:text-orange-500 md:p-0">Recursos</router-link>
-            </li>
             <li class="relative">
               <div @click="toggleDropdown" class="block py-2 px-3 text-blue-800 cursor-pointer hover:text-orange-500 md:p-0">
                 Modelos 3D
@@ -44,7 +38,7 @@
         </div>
       </div>
     </nav>
-    <router-view /> <!-- Añadir esto para mostrar las rutas -->
+    <router-view />
   </div>
 </template>
 
