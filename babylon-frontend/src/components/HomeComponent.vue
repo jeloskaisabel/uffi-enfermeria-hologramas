@@ -48,11 +48,15 @@
       </div>
       <div class="relative">
         <div class="overflow-hidden pb-4">
-          <div class="flex transition-transform duration-300 ease-in-out"
-            :style="{ transform: `translateX(-${currentIndex * 100}%)` }">
+          <div class="flex transition-all duration-500 ease-in-out" 
+            :class="{ 'transition-none': isTransitioning }"
+            :style="{ 
+              transform: `translateX(-${transformValue}%)`,
+              opacity: fadeOpacity
+            }">
             <div v-for="(model, index) in models" :key="index" class="min-w-full sm:min-w-1/2 lg:min-w-1/3 px-4">
               <div
-                class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow h-full flex flex-col"
+                class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 h-full flex flex-col transform hover:scale-105"
                 style="min-height: 380px;">
                 <div class="p-8 flex-grow">
                   <div class="flex items-center mb-6">
@@ -76,7 +80,7 @@
     </div>
 
     <div class="flex justify-center mt-8 space-x-2 sm:hidden">
-      <button v-for="(_, index) in models" :key="index" @click="goToSlide(index)"
+      <button v-for="(_, index) in totalSlides" :key="index" @click="goToSlide(index)"
         :class="`w-3 h-3 rounded-full ${index === currentIndex ? 'bg-blue-600' : 'bg-gray-300'}`"></button>
     </div>
   </section>
@@ -90,36 +94,72 @@ export default {
   data() {
     return {
       currentIndex: 0,
+      windowWidth: window.innerWidth,
+      isTransitioning: false,
+      navigationDirection: 'next',
       models: [
         {
           title: "Sistema Nervioso",
           description: "Modelos detallados del encéfalo, médula espinal y nervios periféricos para estudio neurológico.",
-          type: "biologia",
+          type: "sistema-nervioso",
         },
         {
           title: "Cardiovascular",
           description: "Corazón, vasos sanguíneos y sistema circulatorio con enfoque en procedimientos de enfermería.",
-          type: "medicina"
+          type: "cardiovascular"
         },
         {
           title: "Respiratorio",
           description: "Vías aéreas, pulmones y estructuras relacionadas para comprensión de la ventilación.",
-          type: "quimica",
+          type: "sistema-respiratorio",
         },
         {
           title: "Digestivo",
           description: "Anatomía abdominal y órganos digestivos para procedimientos de alimentación y eliminación.",
-          type: "biologia"
+          type: "sistema-digestivo"
         },
         {
           title: "Osteoarticular",
           description: "Esqueleto humano y articulaciones con puntos de referencia para procedimientos.",
-          type: "medicina"
+          type: "osteoarticular"
         }
       ]
     }
   },
+  computed: {
+    cardsPerSlide() {
+      if (this.windowWidth < 640) {
+        return 1;
+      } else if (this.windowWidth < 1024) {
+        return 2;
+      } else {
+        return 3;
+      }
+    },
+    totalSlides() {
+      return Math.ceil(this.models.length / this.cardsPerSlide);
+    },
+    transformValue() {
+      return this.currentIndex * 100;
+    },
+    fadeOpacity() {
+      return this.isTransitioning ? 0 : 1;
+    }
+  },
+  mounted() {
+    window.addEventListener('resize', this.handleResize);
+  },
+  beforeUnmount() {
+    window.removeEventListener('resize', this.handleResize);
+  },
   methods: {
+    handleResize() {
+      this.windowWidth = window.innerWidth;
+      const maxIndex = this.totalSlides - 1;
+      if (this.currentIndex > maxIndex) {
+        this.currentIndex = maxIndex;
+      }
+    },
     scrollToContent() {
       const contentSection = document.getElementById('content');
       if (contentSection) {
@@ -127,10 +167,35 @@ export default {
       }
     },
     prevSlide() {
-      this.currentIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.models.length - 1;
+      this.navigationDirection = 'prev';
+      const newIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.totalSlides - 1;
+      this.handleCircularTransition(newIndex);
     },
     nextSlide() {
-      this.currentIndex = this.currentIndex < this.models.length - 1 ? this.currentIndex + 1 : 0;
+      this.navigationDirection = 'next';
+      const newIndex = this.currentIndex < this.totalSlides - 1 ? this.currentIndex + 1 : 0;
+      this.handleCircularTransition(newIndex);
+    },
+    handleCircularTransition(newIndex) {
+      const isCircular = ((this.currentIndex == this.totalSlides - 1 && newIndex == 0) || (this.currentIndex == 0 && newIndex == this.totalSlides - 1));
+
+      if (isCircular) {
+        this.isTransitioning = true;
+        
+        setTimeout(() => {
+          this.currentIndex = newIndex;
+          setTimeout(() => {
+            this.isTransitioning = false;
+          }, 100);
+        }, 250);
+      } else {
+        this.isTransitioning = true;
+        this.currentIndex = newIndex;
+        
+        setTimeout(() => {
+          this.isTransitioning = false;
+        }, 300);
+      }
     },
     goToSlide(index) {
       this.currentIndex = index;
@@ -148,6 +213,24 @@ export default {
   transition-property: transform;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
+}
+
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 500ms;
+}
+
+.transition-none {
+  transition: none !important;
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
 }
 
 .min-w-full {
