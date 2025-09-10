@@ -3,22 +3,21 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "src/app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "serv": "nodemon app",
-    "build": "cd../babylon-frontend && npm run build",
-    "copy": "xcopy ..\\babylon-frontend\\dist .\\public\\dist /s /e /y",
-    "setup": "node setup && npm run build && npm run copy",
-    "prod": "npm run setup && cls && node app.js",
-    "dev": "node app.js"
+    "dev": "node --watch src/app.js",
+    "start": "node src/app.js",
+    "build:frontend": "cd ../babylon-frontend && npm run build",
+    "copy:frontend": "xcopy ..\\babylon-frontend\\dist .\\public\\dist /s /e /y",
+    "deploy:local": "npm run build:frontend && npm run copy:frontend && npm run dev",
+    "clean": "rimraf public/dist"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
-    "dotenv": "^16.0.1",
-    "express": "^4.18.1"
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
   }
 }
