@@ -1,69 +1,89 @@
 <template>
-  <div class="h-[27rem] md:h-[43rem] py-5 max-h-screen overflow-y-auto overflow-x-hidden flex flex-col flex-grow">
-    <div v-for="(modelData, name) in models" :key="name" class="flex justify-center mb-3">
-      <button
-        type="button"
-        class="w-full max-w-xs focus:outline-none text-white bg-orange-500 hover:bg-orange-600 focus:ring-4 focus:ring-orange-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:focus:ring-orange-900"
-        @click="$emit('changemodel', modelData.modelURL)"
-      >
-        {{ name }}
+  <div class="py-5 flex flex-col flex-grow">
+    <div v-for="(child, systemKey) in models" :key="systemKey" class="border-b border-slate-200">
+      <button @click="toggleSystem(systemKey)"
+        class="w-full flex justify-between items-center py-3 text-white bg-orange-500 hover:bg-orange-600 font-medium px-4">
+        <span>{{ child.originalName }}</span>
+        <span class="transition-transform duration-300" :class="{ 'rotate-180': expandedSystems[systemKey] }">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16" class="w-4 h-4">
+            <path v-if="!expandedSystems[systemKey]"
+              d="M8.75 3.75a.75.75 0 0 0-1.5 0v3.5h-3.5a.75.75 0 0 0 0 1.5h3.5v3.5a.75.75 0 0 0 1.5 0v-3.5h3.5a.75.75 0 0 0 0-1.5h-3.5v-3.5Z" />
+            <path v-else d="M3.75 7.25a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5Z" />
+          </svg>
+        </span>
       </button>
+      <div v-show="expandedSystems[systemKey]" class="mt-2 transition-all duration-300 ease-in-out">
+        <div v-for="(model, modelKey) in child.children" :key="modelKey" class="mb-2">
+          <div class="w-full">
+            <button @click="$emit('changemodel', model.modelURL)"
+              class="w-full text-white bg-orange-300 hover:bg-orange-400 font-medium py-2.5">
+              {{ model.originalName }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
+<script setup>
+import { ref, watch, onMounted } from 'vue';
 
-<script>
-export default {
-  name: 'ListModels',
-  props: ['type'],
-  data() {
-    return {
-      models: {},
-    };
-  },
-  mounted() {
-    this.getModels(this.type);
-  },
-  watch: {
-    type: {
-      immediate: true,
-      handler(newType) {
-        this.getModels(newType);
-      },
-    },
-  },
-  methods: {
-    async getModels(type) {
-      try {
-        const response = await fetch(`${process.env.VUE_APP_API_URL}files`);
-        const data = await response.json();
-        console.log('Datos obtenidos:', data); // Depuración
+const props = defineProps({
+  type: { type: String, required: true }
+});
+const emit = defineEmits(['changemodel', 'modelsLoaded']);
+const models = ref({});
+const expandedSystems = ref({});
+watch(
+  () => props.type,
+  (newType) => getModels(newType),
+  { immediate: true }
+);
+onMounted(() => {
+  getModels(props.type);
+});
+async function getModels(type) {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/models/${type}`);
+    const data = await response.json();
 
-        const originalType = Object.keys(data).find(key => this.normalizeString(key) === type);
-        console.log('Tipo original:', originalType); // Depuración
+    const normalizedType = normalizeString(data.originalName);
 
-        if (originalType) {
-          this.models = data[originalType];
-        } else {
-          this.models = {};
-        }
-        console.log('Modelos para el tipo:', this.models); // Depuración
-      } catch (error) {
-        console.error('Error al obtener modelos:', error); // Depuración
-      }
-    },
-    normalizeString(str) {
-      return str.toLowerCase().replace(/\s+/g, '-').normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    },
-  },
-};
+    if (normalizedType === type) {
+      models.value = data.children || {};
+      emit('modelsLoaded', models.value);
+    } else {
+      models.value = {};
+      console.warn(`Normalized type "${normalizedType}" did not match prop type "${type}"`);
+    }
+    expandedSystems.value = Object.keys(models.value).reduce((acc, key) => {
+      acc[key] = false;
+      return acc;
+    }, {});
+  } catch (error) {
+    console.error('Error fetching models:', error);
+  }
+}
+
+function normalizeString(str) {
+  return str
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+function toggleSystem(systemKey) {
+  Object.keys(expandedSystems.value).forEach((key) => {
+    if (key !== systemKey) expandedSystems.value[key] = false;
+  });
+  expandedSystems.value[systemKey] = !expandedSystems.value[systemKey];
+}
 </script>
 
+
 <style scoped>
-.area {
-  justify-content: center;
-  background-color: white;
-  margin: 5px;
-  border-radius: 12px;
+[v-cloak]>* {
+  display: none;
 }
 </style>

@@ -1,7 +1,8 @@
 <template>
-  <div class="relative flex justify-center items-center h-screen bg-cover bg-center"
-    :style="{ backgroundImage: `url(${require('@/assets/image-hero.png')})` }">
-    <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+  <div class="relative flex justify-center items-center h-screen bg-cover bg-center" :style="{
+    backgroundImage: `url('${heroImage}')`
+  }">
+    <div class="overlay"></div>
     <div class="relative z-10 text-center text-white p-4 max-w-screen-lg mx-auto">
       <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold mb-4">Bienvenido a la Sala de Hologramas de Anatomía I</h1>
       <p class="text-base md:text-lg lg:text-2xl mb-8"> Explora la colección de modelos holográficos diseñados para el
@@ -48,25 +49,24 @@
       </div>
       <div class="relative">
         <div class="overflow-hidden pb-4">
-          <div class="flex transition-all duration-500 ease-in-out" 
-            :class="{ 'transition-none': isTransitioning }"
-            :style="{ 
+          <div class="flex transition-all duration-500 ease-in-out" :class="{ 'transition-none': isTransitioning }"
+            :style="{
               transform: `translateX(-${transformValue}%)`,
               opacity: fadeOpacity
             }">
-            <div v-for="(model, index) in models" :key="index" class="min-w-full sm:min-w-1/2 lg:min-w-1/3 px-4">
+            <div v-for="(category, index) in categories" :key="index" class="min-w-full sm:min-w-1/2 lg:min-w-1/3 px-4">
               <div
                 class="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 h-full flex flex-col transform hover:scale-105"
                 style="min-height: 380px;">
                 <div class="p-8 flex-grow">
                   <div class="flex items-center mb-6">
-                    <h3 class="text-xl font-semibold text-blue-900">{{ model.title }}</h3>
+                    <h3 class="text-xl font-semibold text-blue-900">{{ category.originalName }}</h3>
                   </div>
-                  <p class="text-lg text-blue-900 mb-4">{{ model.description }}</p>
+                  <p class="text-lg text-blue-900 mb-4">Explora los modelos 3D de esta categoría.</p>
                 </div>
                 <div class="px-8 pb-8">
                   <div class="flex justify-between items-center">
-                    <router-link :to="'/visualizer/' + model.type"
+                    <router-link :to="'/visualizer/' + category.fixedName"
                       class="font-medium transition-colors text-lg text-blue-900">
                       Ver modelos
                     </router-link>
@@ -88,120 +88,115 @@
 
 </template>
 
-<script>
-export default {
-  name: 'HomeComponent',
-  data() {
-    return {
-      currentIndex: 0,
-      windowWidth: window.innerWidth,
-      isTransitioning: false,
-      navigationDirection: 'next',
-      models: [
-        {
-          title: "Sistema Nervioso",
-          description: "Modelos detallados del encéfalo, médula espinal y nervios periféricos para estudio neurológico.",
-          type: "sistema-nervioso",
-        },
-        {
-          title: "Cardiovascular",
-          description: "Corazón, vasos sanguíneos y sistema circulatorio con enfoque en procedimientos de enfermería.",
-          type: "cardiovascular"
-        },
-        {
-          title: "Respiratorio",
-          description: "Vías aéreas, pulmones y estructuras relacionadas para comprensión de la ventilación.",
-          type: "sistema-respiratorio",
-        },
-        {
-          title: "Digestivo",
-          description: "Anatomía abdominal y órganos digestivos para procedimientos de alimentación y eliminación.",
-          type: "sistema-digestivo"
-        },
-        {
-          title: "Osteoarticular",
-          description: "Esqueleto humano y articulaciones con puntos de referencia para procedimientos.",
-          type: "osteoarticular"
-        }
-      ]
-    }
-  },
-  computed: {
-    cardsPerSlide() {
-      if (this.windowWidth < 640) {
-        return 1;
-      } else if (this.windowWidth < 1024) {
-        return 2;
-      } else {
-        return 3;
-      }
-    },
-    totalSlides() {
-      return Math.ceil(this.models.length / this.cardsPerSlide);
-    },
-    transformValue() {
-      return this.currentIndex * 100;
-    },
-    fadeOpacity() {
-      return this.isTransitioning ? 0 : 1;
-    }
-  },
-  mounted() {
-    window.addEventListener('resize', this.handleResize);
-  },
-  beforeUnmount() {
-    window.removeEventListener('resize', this.handleResize);
-  },
-  methods: {
-    handleResize() {
-      this.windowWidth = window.innerWidth;
-      const maxIndex = this.totalSlides - 1;
-      if (this.currentIndex > maxIndex) {
-        this.currentIndex = maxIndex;
-      }
-    },
-    scrollToContent() {
-      const contentSection = document.getElementById('content');
-      if (contentSection) {
-        contentSection.scrollIntoView({ behavior: 'smooth' });
-      }
-    },
-    prevSlide() {
-      this.navigationDirection = 'prev';
-      const newIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.totalSlides - 1;
-      this.handleCircularTransition(newIndex);
-    },
-    nextSlide() {
-      this.navigationDirection = 'next';
-      const newIndex = this.currentIndex < this.totalSlides - 1 ? this.currentIndex + 1 : 0;
-      this.handleCircularTransition(newIndex);
-    },
-    handleCircularTransition(newIndex) {
-      const isCircular = ((this.currentIndex == this.totalSlides - 1 && newIndex == 0) || (this.currentIndex == 0 && newIndex == this.totalSlides - 1));
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import axios from 'axios';
 
-      if (isCircular) {
-        this.isTransitioning = true;
-        
-        setTimeout(() => {
-          this.currentIndex = newIndex;
-          setTimeout(() => {
-            this.isTransitioning = false;
-          }, 100);
-        }, 250);
-      } else {
-        this.isTransitioning = true;
-        this.currentIndex = newIndex;
-        
-        setTimeout(() => {
-          this.isTransitioning = false;
-        }, 300);
-      }
-    },
-    goToSlide(index) {
-      this.currentIndex = index;
-    }
+
+const heroImage = '/images/image-hero.png';
+
+console.log('Hero image path:', heroImage);
+console.log('Base URL:', import.meta.env.BASE_URL);
+const currentIndex = ref(0);
+const windowWidth = ref(window.innerWidth);
+const isTransitioning = ref(false);
+const navigationDirection = ref('next');
+const categories = ref([]);
+
+
+
+const cardsPerSlide = computed(() => {
+  if (windowWidth.value < 640) {
+    return 1;
+  } else if (windowWidth.value < 1024) {
+    return 2;
+  } else {
+    return 3;
+  }
+});
+
+const totalSlides = computed(() => {
+  return Math.ceil(categories.value.length / cardsPerSlide.value);
+});
+
+const transformValue = computed(() => {
+  return currentIndex.value * 100;
+});
+
+const fadeOpacity = computed(() => {
+  return isTransitioning.value ? 0 : 1;
+});
+
+onMounted(async () => {
+  window.addEventListener('resize', handleResize);
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const response = await axios.get(`${apiUrl}/api/categories`);
+    const data = response.data;
+
+    categories.value = data;
+
+  } catch (error) {
+    console.error("Error fetching models from the API", error);
+  }
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+});
+
+const handleResize = () => {
+  windowWidth.value = window.innerWidth;
+  const maxIndex = totalSlides.value - 1;
+  if (currentIndex.value > maxIndex) {
+    currentIndex.value = maxIndex;
   }
 };
+
+const scrollToContent = () => {
+  const contentSection = document.getElementById('content');
+  if (contentSection) {
+    contentSection.scrollIntoView({ behavior: 'smooth' });
+  }
+};
+
+const prevSlide = () => {
+  navigationDirection.value = 'prev';
+  const newIndex = currentIndex.value > 0 ? currentIndex.value - 1 : totalSlides.value - 1;
+  handleCircularTransition(newIndex);
+};
+
+const nextSlide = () => {
+  navigationDirection.value = 'next';
+  const newIndex = currentIndex.value < totalSlides.value - 1 ? currentIndex.value + 1 : 0;
+  handleCircularTransition(newIndex);
+};
+
+const handleCircularTransition = (newIndex) => {
+  const isCircular = ((currentIndex.value == totalSlides.value - 1 && newIndex == 0) || (currentIndex.value == 0 && newIndex == totalSlides.value - 1));
+
+  if (isCircular) {
+    isTransitioning.value = true;
+
+    setTimeout(() => {
+      currentIndex.value = newIndex;
+      setTimeout(() => {
+        isTransitioning.value = false;
+      }, 100);
+    }, 250);
+  } else {
+    isTransitioning.value = true;
+    currentIndex.value = newIndex;
+
+    setTimeout(() => {
+      isTransitioning.value = false;
+    }, 300);
+  }
+};
+
+const goToSlide = (index) => {
+  currentIndex.value = index;
+}
+
 </script>
 
 <style scoped>
@@ -225,16 +220,28 @@ export default {
   transition: none !important;
 }
 
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.5s ease;
 }
 
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 
 .min-w-full {
   min-width: 100%;
+}
+
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1;
 }
 
 @media (min-width: 640px) {

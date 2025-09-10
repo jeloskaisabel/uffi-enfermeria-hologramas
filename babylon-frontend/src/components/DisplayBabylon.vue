@@ -1,147 +1,256 @@
 <template>
-  <div class="md:mr-10 overflow-auto" id="cnvid">
-    <canvas class="w-full max-h-[40rem]"/>
+  <div class="md:mr-10 overflow-auto py-5" id="cnvid">
+    <canvas ref="canvas" class="w-full max-h-[40rem]" />
     <div>
-      <button class="bg-green-400 text-white px-2 m-1 rounded-full" @click="fullScreen" id="view-fullscreen">Pantalla completa</button>
+      <button class="bg-blue-800 text-white px-5 py-1 mt-2 rounded-full" @click="toggleFullScreen" id="view-fullscreen">
+        Pantalla completa
+      </button>
     </div>
   </div>
 </template>
 
-<script>
-import { 
-  Scene, 
-  Engine, 
-  ArcRotateCamera,
-  Vector3, 
-  HemisphericLight,
-  Color3,  
-  SceneLoader
-} from 'babylonjs';
-import 'babylonjs-loaders';
+<script setup>
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import * as BABYLON from '@babylonjs/core';
+import '@babylonjs/loaders/glTF';
+import '@babylonjs/core/Loading/loadingScreen';
 
-export default {
-  name: 'DisplayBabylon',
-  props: ['modelURL'],
-  watch:{
-    modelURL:function(){
-      console.log('URL del modelo cambiada:', this.modelURL); // Depuración
-      this.dispose();
-      this.ModelLoader();
+const props = defineProps({
+  modelURL: { type: String, required: false, default: '' }
+});
+
+const canvas = ref(null);
+const engine = ref(null);
+const scene = ref(null);
+const camera = ref(null);
+
+watch(() => props.modelURL, () => {
+  if (props.modelURL) {
+    dispose();
+    initEngineAndScene();
+  } else {
+    dispose();
+    initEmptyScene();
+  }
+});
+
+onMounted(() => {
+  if (props.modelURL) {
+    initEngineAndScene();
+  } else {
+    initEmptyScene();
+  }
+});
+
+onBeforeUnmount(dispose);
+
+async function initEngineAndScene() {
+  if (!props.modelURL) {
+    console.warn('No model URL provided');
+    return;
+  }
+
+  if (!canvas.value) {
+    console.error('Canvas element not available');
+    return;
+  }
+
+  try {
+    const fullURL = `${import.meta.env.VITE_API_URL}/${props.modelURL}`;
+    engine.value = new BABYLON.Engine(canvas.value, true, {
+      preserveDrawingBuffer: true,
+      stencil: true
+    });
+
+    scene.value = await createScene(fullURL);
+
+    window.addEventListener('resize', handleResize);
+
+    engine.value.runRenderLoop(() => {
+      if (scene.value && scene.value.activeCamera) {
+        scene.value.render();
+      }
+    });
+
+  } catch (error) {
+    console.error('Error initializing Babylon scene:', error);
+  }
+}
+
+async function initEmptyScene() {
+  if (!canvas.value) {
+    console.error('Canvas element not available');
+    return;
+  }
+
+  try {
+    engine.value = new BABYLON.Engine(canvas.value, true, {
+      preserveDrawingBuffer: true,
+      stencil: true
+    });
+
+    scene.value = await createEmptyScene();
+
+    window.addEventListener('resize', handleResize);
+
+    engine.value.runRenderLoop(() => {
+      if (scene.value && scene.value.activeCamera) {
+        scene.value.render();
+      }
+    });
+
+  } catch (error) {
+    console.error('Error initializing empty Babylon scene:', error);
+  }
+}
+
+async function createScene(modelURL) {
+  const newScene = new BABYLON.Scene(engine.value);
+  newScene.clearColor = new BABYLON.Color3(0, 0, 0);
+
+  const newCamera = new BABYLON.ArcRotateCamera(
+    "camera",
+    Math.PI / 2,
+    Math.PI / 2,
+    2,
+    BABYLON.Vector3.Zero(),
+    newScene
+  );
+
+  newCamera.attachControl(canvas.value, true);
+  newCamera.wheelPrecision = 15;
+  newCamera.pinchDeltaPercentage *= -1;
+  newCamera.pinchPrecision = 75;
+
+  const light = new BABYLON.HemisphericLight(
+    "light",
+    new BABYLON.Vector3(0, 1, 0),
+    newScene
+  );
+
+  newScene.registerBeforeRender(() => {
+    light.position = newCamera.position;
+  });
+
+  await loadModel(newScene, newCamera, modelURL);
+
+  camera.value = newCamera;
+  return newScene;
+}
+
+async function createEmptyScene() {
+  const newScene = new BABYLON.Scene(engine.value);
+  newScene.clearColor = new BABYLON.Color3(0.1, 0.1, 0.1);
+
+  const newCamera = new BABYLON.ArcRotateCamera(
+    "camera",
+    Math.PI / 2,
+    Math.PI / 2,
+    5,
+    BABYLON.Vector3.Zero(),
+    newScene
+  );
+
+  newCamera.attachControl(canvas.value, true);
+  newCamera.wheelPrecision = 15;
+  newCamera.pinchDeltaPercentage *= -1;
+  newCamera.pinchPrecision = 75;
+  newCamera.lowerRadiusLimit = 1;
+  newCamera.upperRadiusLimit = 50;
+
+  const light = new BABYLON.HemisphericLight(
+    "light",
+    new BABYLON.Vector3(0, 1, 0),
+    newScene
+  );
+
+  newScene.registerBeforeRender(() => {
+    light.position = newCamera.position;
+  });
+
+  camera.value = newCamera;
+  return newScene;
+}
+
+async function loadModel(sceneInstance, cameraInstance, modelURL) {
+  try {
+    engine.value.displayLoadingUI();
+    const result = await BABYLON.SceneLoader.LoadAssetContainerAsync(
+      "",
+      modelURL,
+      sceneInstance
+    );
+    result.addAllToScene();
+
+    if (result.meshes.length === 0) {
+      console.warn("No meshes found in the loaded model.");
+      return;
     }
-  },
-  mounted(){
-    this.canvas = document.querySelector('canvas');
-    this.ModelLoader();
-  },
-  data(){
-    return {
-      engine: null,
-      scene: null,
-      camera: null,
-      canvas: null
+
+    let mainMesh = result.meshes[0];
+    mainMesh = result.meshes.find(mesh => mesh.name !== "__root__")
+
+    const boundingInfo = mainMesh.getBoundingInfo();
+    const size = boundingInfo.diagonalLength;
+    if (size < 1) {
+      const scaleFactor = 1 / size;
+      result.meshes.forEach(mesh => {
+        mesh.scaling.scaleInPlace(scaleFactor);
+      });
     }
-  },
-  methods:{
-    fullScreen(){
-      const canvas = document.querySelector("canvas");
-      if (canvas.requestFullScreen) {
-        canvas.requestFullScreen();
-      } else if (canvas.webkitRequestFullScreen) {
-        canvas.webkitRequestFullScreen();
-      } else if (canvas.mozRequestFullScreen) {
-        canvas.mozRequestFullScreen();
-      } else if (canvas.msRequestFullscreen) {
-        canvas.msRequestFullscreen();
-      } else if (canvas.webkitEnterFullscreen) {
-        canvas.webkitEnterFullscreen(); 
-      }
-    },
-    
-    ModelLoader(){
-      if (!this.modelURL) {
-        console.log('No se proporcionó URL del modelo'); // Depuración
-        return;
-      }
 
-      const fullURL = `${process.env.VUE_APP_API_URL}${this.modelURL}`;
-      console.log('Cargando modelo:', fullURL); // Depuración
+    const adjustedSize = Math.max(size, 1);
+    cameraInstance.radius = adjustedSize * 2;
+    cameraInstance.lowerRadiusLimit = adjustedSize * 0.5;
+    cameraInstance.upperRadiusLimit = adjustedSize * 10;
+    cameraInstance.target = boundingInfo.boundingBox.centerWorld;
 
-      this.engine = new Engine(this.canvas, true);
-      const scene = this.createScene(fullURL);
-      this.scene = scene;
+  } catch (err) {
+    console.error('Error loading model:', err);
+  } finally {
+    engine.value.hideLoadingUI();
+  }
+}
 
-      window.addEventListener("resize", () => {
-          this.engine.resize();
-      });
-      this.engine.runRenderLoop(()=>{
-          scene.render();
-      });
-    },
+function handleResize() {
+  engine.value?.resize();
+}
 
-    createScene(modelURL){
-      var scene = new Scene(this.engine);
-      scene.clearColor = Color3.Black();
-      var camera = new ArcRotateCamera("camera", Math.PI/2, Math.PI / 2 , 2, Vector3.Zero(), scene);
-      camera.attachControl(this.canvas, true);
-      camera.wheelPrecision = 15;
-      camera.pinchDeltaPercentage *= -1;
-      camera.pinchPrecision = 75;
-      const light = new HemisphericLight("light", new Vector3(0, 1, 0), scene);
+function dispose() {
+  if (scene.value) {
+    scene.value.dispose();
+    scene.value = null;
+  }
+  if (engine.value) {
+    engine.value.dispose();
+    engine.value = null;
+  }
+  window.removeEventListener('resize', handleResize);
+}
 
-      scene.registerBeforeRender( ()=> {
-          light.position = camera.position;
-      });
-      this.loadModel(scene, camera, modelURL);
+function toggleFullScreen() {
+  if (!canvas.value) return;
 
-      return scene;
-    },
+  const c = canvas.value;
+  const requestFullscreen =
+    c.requestFullscreen ||
+    c.webkitRequestFullScreen ||
+    c.mozRequestFullScreen ||
+    c.msRequestFullscreen ||
+    c.webkitEnterFullscreen;
 
-    async loadModel(scene, camera, modelURL){
-      try {
-        this.engine.displayLoadingUI();
-        console.log('Importando malla desde:', modelURL); // Depuración
-
-        const {meshes, animationGroups, url} = await SceneLoader.ImportMeshAsync("", '', modelURL, scene);       
-        var boundingBox = 1;
-        var size = meshes[boundingBox].getBoundingInfo().diagonalLength;
-        if (size < 1){
-          var scl = 0;
-          for(var i = 0; i < meshes.length;  i++){
-              meshes[i].scaling.x /= size;
-              meshes[i].scaling.y /= size;
-              meshes[i].scaling.z /= size;
-              scl += meshes[i].scaling.x + meshes[i].scaling.y + meshes[i].scaling.z;
-          }
-          size =  (scl/boundingBox)/2;
-        }
-        camera.position.x *=  size ;
-        camera.position.y *= size ;
-        camera.position.z *=  size;
-
-        camera.lowerRadiusLimit = size / 1.2;
-        camera.target = meshes[boundingBox].getBoundingInfo()['boundingBox']['centerWorld'];        
-
-        this.engine.hideLoadingUI();
-      } catch (error) {
-        console.error('Error al cargar el modelo:', error); // Depuración
-        this.engine.hideLoadingUI();
-      }
-    },
-
-    dispose(){
-      if (this.scene) {
-        this.scene.dispose();
-      }
-      if (this.engine) {
-        this.engine.dispose();
-      }
-    }
+  if (requestFullscreen) {
+    requestFullscreen.call(c);
   }
 }
 </script>
 
 <style scoped>
 #cnvid {
-  position: relative;
+  margin-top: 0;
+}
+
+canvas {
+  display: block;
 }
 </style>
