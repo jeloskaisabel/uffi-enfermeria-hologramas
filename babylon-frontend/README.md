@@ -1,35 +1,51 @@
-# babylon-frontend
+# Babylon Frontend
 
-This template should help get you started developing with Vue 3 in Vite.
+Aplicación web interactiva para visualización de modelos 3D anatómicos usando Babylon.js, diseñada para estudio de modelos anatómicos.
 
-## Recommended IDE Setup
+## Funcionalidades
+- Visualizador 3D interactivo de modelos anatómicos
+- Navegación por categorías de modelos
+- Lista dinámica de modelos por categoría
+- Interfaz responsive con Tailwind CSS
+- Integración con API backend para datos de modelos
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Tecnologías
+- Vue.js 3 (Composition API)
+- Babylon.js 8.26.1 (motor 3D)
+- Vite 7.0.6 (build tool)
+- Tailwind CSS 4.1.12 (estilos)
+- Vue Router 4.5.1 (navegación)
 
-## Customize configuration
+## Componentes Principales
+- `VisualizerComponent.vue` - Vista principal del visualizador
+- `DisplayBabylon.vue` - Renderizado 3D con Babylon.js
+- `ListModels.vue` - Lista de modelos disponibles
+- `HomeComponent.vue` - Página de inicio
 
-See [Vite Configuration Reference](https://vite.dev/config/).
-
-## Project Setup
-
-```sh
+## Instalación
+```bash
 npm install
 ```
 
-### Compile and Hot-Reload for Development
-
-```sh
+## Uso
+```bash
+# Desarrollo
 npm run dev
-```
 
-### Compile and Minify for Production
-
-```sh
+# Construcción para produccion
 npm run build
-```
 
-### Lint with [ESLint](https://eslint.org/)
+# Vista previa de build
+npm run preview
 
-```sh
+# Linting y formato
 npm run lint
+npm run format
 ```
+
+## Estructura
+- `src/App.vue` - Layout principal con navegación
+- `src/components/` - Componentes Vue reutilizables
+- `src/router/` - Configuración de rutas
+- `src/assets/` - Imágenes y recursos estáticos
+- `public/images/` - Logo y assets públicos
