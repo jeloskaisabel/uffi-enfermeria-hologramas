@@ -27,7 +27,12 @@ const buildEntry = async (item, dirPath, relativePath, reader) => {
     if (item.isFile()) {
         const fileName = path.parse(item.name).name;
         const fixedName = normalizeName(fileName);
-        return [fixedName, { originalName: fileName, modelURL: `models/${encodeURIComponent(itemRelativePath)}` }];
+        const urlPath = itemRelativePath.split(path.sep).join('/');
+        const encodedUrlPath = urlPath
+            .split('/')
+            .map(segment => encodeURIComponent(segment))
+            .join('/');
+        return [fixedName, { originalName: fileName, modelURL: `models/${encodedUrlPath}` }];
     }
 
     return null;
